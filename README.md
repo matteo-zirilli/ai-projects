@@ -2,7 +2,7 @@
 
 A collection of the projects I developed during my **Master's in AI Engineering**. Each project is a self-contained Jupyter notebook (built and run on Google Colab), with the code, the saved outputs (metrics, training logs, charts) and a written analysis of the results.
 
-The projects follow the path of the course: from Python fundamentals, to classical Machine Learning with scikit-learn, to Deep Learning for computer vision with Keras/TensorFlow and PyTorch, including transfer learning on pre-trained networks.
+The projects follow the path of the course: from Python fundamentals, to classical Machine Learning with scikit-learn, to Deep Learning for computer vision with Keras/TensorFlow and PyTorch (including transfer learning on pre-trained networks), up to Reinforcement Learning.
 
 > 🇮🇹 The original Italian versions of all notebooks are kept in the [`it/`](it/) folder. The English notebooks in the root are faithful translations: the code logic is unchanged, and only text, comments and printed messages were translated.
 
@@ -18,6 +18,7 @@ The projects follow the path of the course: from Python fundamentals, to classic
 | 4 | [Animal Recognition for Self-Driving Cars](#4-animal-recognition-for-self-driving-cars--cnn-on-cifar-10) | Computer vision | Custom CNN, class regrouping, early stopping, error analysis | Keras / TensorFlow | 92% accuracy, 0.90 macro-F1 |
 | 5 | [Food Image Classification](#5-food-image-classification--cnn-from-scratch-vs-transfer-learning) | Computer vision | CNN from scratch, data augmentation, VGG16 transfer learning | PyTorch | 77% accuracy on 14 classes (transfer) |
 | 6 | [Flower Recognition for an AgriTech Company](#6-flower-recognition-for-an-agritech-company--transfer-learning-with-resnet-18) | Computer vision | ResNet-18 transfer learning, metric-driven early stopping | PyTorch / timm | 0.89 macro-F1 |
+| 7 | [Cybersecurity Defense with Reinforcement Learning](#7-cybersecurity-defense-with-reinforcement-learning--sarsa-vs-double-dqn) | Reinforcement learning | SARSA (tabular), Double DQN, state design, custom Gym wrapper | PyTorch / gym-idsgame | 91.5% successful defenses vs the strongest attacker |
 
 ---
 
@@ -147,6 +148,37 @@ Transfer learning gains about 15 points while training about 9× fewer parameter
 - The model already reached about 0.86 macro-F1 after the first epoch, a sign of how well ImageNet features transfer to this task.
 - The notebook ends with a critical discussion of the limits (same-source test set, label noise) and next steps such as fine-tuning the backbone.
 
+## 7. Cybersecurity Defense with Reinforcement Learning — SARSA vs Double DQN
+
+📓 [`Cybersecurity_Defense_with_Reinforcement_Learning.ipynb`](Cybersecurity_Defense_with_Reinforcement_Learning.ipynb) · [Open in Colab](https://colab.research.google.com/github/matteo-zirilli/ai-projects/blob/main/Cybersecurity_Defense_with_Reinforcement_Learning.ipynb)
+
+**Scenario.** Train an agent to defend a network under attack, using **gym-idsgame**: a two-player intrusion-detection game in which an attacker tries to compromise a data node and the defender reinforces the nodes and tries to detect the attack. The agent plays the defender against two built-in attackers: a **random** attacker and a **maximal** attacker that targets the weakest node.
+
+**Approach.**
+- **Making a legacy environment work.** `gym-idsgame` was written for old versions of Gym and does not run on a modern Colab environment as it is. The notebook patches a library bug and writes a custom single-agent wrapper that hides the multi-agent interface and exposes only the defender's point of view.
+- **Environment analysis.** Reading the environment code clarified how episodes end and how rewards are assigned. That led to choosing the **successful-defense rate** as the main metric, and to setting random-defender baselines.
+- **SARSA (tabular, on-policy)** with two state representations:
+  - **Approach A:** the raw 20-value observation, which produced about 17,800 distinct states, half of them visited only once.
+  - **Approach B:** 3 hand-crafted features, which reduced the states to 132 with a median of 55 visits.
+  - The epsilon-decay schedule was tuned over several runs.
+- **Double DQN (deep RL, off-policy)** in PyTorch, with replay buffer and target network. It was trained on both attack scenarios and the seed variability was checked.
+
+**Results.**
+
+| Scenario | Agent | Successful defenses |
+|----------|-------|---------------------|
+| Random attack | Random baseline | 51.8% |
+| Random attack | SARSA, raw state | 51.4% |
+| Random attack | SARSA, feature-based state | 73.2% (not reproducible across runs) |
+| Random attack | Double DQN | 70.0% |
+| Maximal attack | Random baseline | 35.4% |
+| Maximal attack | **Double DQN** | **91.5%** |
+
+- The clearest result is the Double DQN against the maximal attacker: from 35% to **91.5% of games won**, with a regular learning curve.
+- Against the random attacker both methods can beat chance, but not reliably from run to run.
+- The notebook explains why: the defender's observation contains no information about the attacker, so a greedy policy always plays the same fixed sequence.
+- The conclusions discuss limits (single runs, untuned DDQN hyperparameters) and next steps.
+
 ---
 
 ## Tech stack
@@ -154,6 +186,7 @@ Transfer learning gains about 15 points while training about 9× fewer parameter
 - **Languages & environment:** Python, Jupyter, Google Colab (GPU)
 - **Data & ML:** pandas, NumPy, scikit-learn, SciPy
 - **Deep Learning:** PyTorch, torchvision, timm, TensorFlow / Keras
+- **Reinforcement Learning:** gym-idsgame (Gym), tabular SARSA, Double DQN
 - **Visualization:** Matplotlib, seaborn
 
 ## Repository structure
@@ -167,6 +200,7 @@ ai-projects/
 ├── Animal_Recognition_for_Self_Driving_Cars.ipynb
 ├── Food_Image_Classification_CNN_vs_Transfer_Learning.ipynb
 ├── Flower_Recognition_for_an_AgriTech_Company.ipynb
+├── Cybersecurity_Defense_with_Reinforcement_Learning.ipynb
 └── it/                      # original Italian versions of the notebooks
 ```
 
